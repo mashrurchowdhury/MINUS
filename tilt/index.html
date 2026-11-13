@@ -73,6 +73,20 @@
 @media(max-width:900px){.focus-track{gap:8px}.focus-pick{padding:17px 10px}.focus-art{width:42px;height:45px;font-size:25px}.focus-copy strong{font-size:12px}}
 @media(max-width:640px){.focus-track{grid-template-columns:1fr;gap:8px}.focus-pick{padding:14px}.focus-art{width:48px;height:48px}.coach-label{display:none}.focus-index{right:10px}.trend-select-label{display:grid;gap:3px}.trend-select-label select{max-width:145px}.stats-panel-head{gap:9px}.coverage-grid{grid-template-columns:1fr}.ghost-target{margin:12px 0}.result-trend{padding:11px}.pattern-series span{font-size:clamp(16px,5vw,26px)}.pattern-options button{min-height:66px}}
 
+/* Angle Artist: no in-round degree readouts or cardinal labels. Reveal only after locking. */
+.angle-dial{cursor:crosshair;user-select:none;-webkit-user-select:none}
+.angle-value{min-height:20px;text-align:center;margin:0 auto 12px;font-size:12px;color:#a7b3b0}
+.angle-review{width:195px;height:195px;pointer-events:none;margin:10px auto}
+.angle-review .angle-arm{height:3px}
+.angle-review .angle-arm.angle-correct{background:#ffb289;opacity:.96;height:4px}
+.angle-reveal{display:flex;flex-direction:column;align-items:center;gap:3px}
+.angle-reveal h2{margin:2px auto}
+.angle-legend{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 19px;margin:4px auto 6px;font-size:12px;color:#d8e0dc}
+.angle-legend span{display:flex;gap:6px;align-items:center}
+.angle-swatch{display:inline-block;width:16px;height:4px;border-radius:3px}
+.angle-swatch.mine{background:var(--accent)}
+.angle-swatch.correct{background:#ffb289}
+
 </style>
   <title>TILT — play with your perception</title>
 </head>
@@ -89,7 +103,7 @@ const GAMES = [
  {id:'words',title:'Déjà Vu',cat:'Memory',tag:'RECOGNITION',duration:55,desc:'Have you seen this word already, or does it just feel familiar?',how:'Choose SEEN if a word appeared earlier in this run, or NEW if it has not. Three mistakes end the run.',tip:'Resist the urge to say seen because a word feels common.',color:'pink',symbol:'Aa',metric:'correct · higher is better'},
  {id:'chimp',title:'Hidden Order',cat:'Memory',tag:'SPATIAL',duration:55,desc:'Numbers disappear. Can you still find them in order?',how:'Memorize numbered cells. After you press 1, the numbers hide. Tap the rest in ascending order.',tip:'Scan from 1 upward and remember the shape of the route.',color:'mint',symbol:'➊',metric:'level · higher is better'},
  {id:'dots',title:'Dot Sense',cat:'Perception',tag:'ESTIMATION',duration:45,desc:'A constellation flashes. Trust your first estimate.',how:'Look at a field of dots briefly, then estimate how many you saw. Five progressively trickier rounds.',tip:'Estimate the density of a small region and scale up.',color:'blue',symbol:'∴',metric:'points / 100'},
- {id:'angle',title:'Angle Artist',cat:'Perception',tag:'SPACE',duration:55,desc:'Set an angle with nothing but intuition.',how:'Drag the needle or tap the dial to match the requested angle. Five rounds.',tip:'Zero points right. Angles increase counterclockwise.',color:'orange',symbol:'∠',metric:'points / 100'},
+ {id:'angle',title:'Angle Artist',cat:'Perception',tag:'SPACE',duration:55,desc:'Set an angle with nothing but intuition.',how:'Drag the needle to make the requested angle by eye. No degree readout until you lock. Five rounds.',tip:'The gray ray is zero. Rotate counterclockwise; exact degrees appear after you lock.',color:'orange',symbol:'∠',metric:'points / 100'},
  {id:'split',title:'Perfect Split',cat:'Perception',tag:'PROPORTION',duration:40,desc:'Can your eyes find exactly 37 percent?',how:'Tap or drag along the line to mark the requested percentage, measured from the left. Five rounds.',tip:'Anchor against quarters and halves, then adjust.',color:'lime',symbol:'◧',metric:'points / 100'},
  {id:'color',title:'Color Ghost',cat:'Perception',tag:'COLOR MEMORY',duration:50,desc:'Remember a shade after it disappears.',how:'Study a color, then choose the exact shade among six close alternatives. Six rounds.',tip:'Remember whether the color feels warmer, cooler, lighter or darker.',color:'pink',symbol:'◉',metric:'correct / 6'},
  {id:'balance',title:'Balance Point',cat:'Perception',tag:'GEOMETRY',duration:55,desc:'Where is the hidden center of an irregular shape?',how:'Imagine the shape as a flat piece of cardboard. Tap where it would balance on a pin. Five shapes.',tip:'A shape’s center of area is not always the center of its bounding box.',color:'violet',symbol:'⬡',metric:'points / 100'},
@@ -176,7 +190,28 @@ function dots(s){let roundNo=0,sum=0,count=0,lastScore=75,tiers=[];
  function draw(){const baseTier=roundNo<2?1:roundNo<4?2:3;const tier=clamp(baseTier+(lastScore>=92?1:0)-(lastScore<50?1:0),1,3);tiers.push(tier);const bands=[[16,36,1250],[28,54,1080],[44,75,920]], [low,high,flash]=bands[tier-1];count=irnd(low,high);const dots=[];let n=0;while(dots.length<count&&n++<5000){const x=rnd(7,93),y=rnd(8,92);if(dots.every(d=>(d.x-x)**2+(d.y-y)**2>22))dots.push({x,y})}
  count=dots.length;h(s.stage,`${stageStats(roundNo+1,5,`LEVEL ${tier} · ${flash/1000}s glance`)}<div class="dot-board">${dots.map((d,i)=>`<span class="dot" style="left:${d.x}%;top:${d.y}%;--sz:${irnd(5,8)}px"></span>`).join('')}</div><div class="game-subtext">Watch the whole field. You only get one look.</div>`);s.after(()=>{h(s.stage,`${stageStats(roundNo+1,5,'Estimation')}<div class="digits-label">HOW MANY DOTS DID YOU SEE?</div><form class="digits-form" id="dotform"><input id="dotnum" aria-label="Estimated dots" type="number" min="0" max="200" placeholder="Your estimate" required>${action('Submit estimate')}</form><div class="game-subtext">No need to be exact. A close estimate counts.</div>`);$('#dotform',s.stage).onsubmit=e=>{e.preventDefault();const v=Number($('#dotnum',s.stage).value);const score=precision(Math.abs(v-count)/Math.max(count,1),.23);lastScore=score;sum+=score;h(s.stage,`<div class="center-note"><div class="mini-score">${score} <small>/ 100</small></div><h2>There were ${count} dots.</h2><p>You guessed ${v}. ${Math.abs(count-v)} ${Math.abs(count-v)===1?'dot':'dots'} off.</p></div>`);roundNo++;if(roundNo>=5)s.after(()=>s.done(sum/5,`${round(sum/5)} / 100`,`Five rounds · difficulty levels ${tiers.join(' → ')}. Relative counting error determines score.`),900);else s.after(draw,950)};$('#commit',s.stage).type='submit';$('#dotnum',s.stage).focus()},flash)}draw();}
 
-function angle(s){let roundNo=0,sum=0,target=0,value=45;function draw(){target=irnd(14,345);value=45;h(s.stage,`${stageStats(roundNo+1,5,'Spatial intuition')}<div class="angle-instruction">Make an angle of <strong>${target}°</strong></div><div class="angle-dial" id="dial"><div class="angle-ring"></div><div class="angle-base"></div><div class="angle-arm" id="arm"></div><div class="angle-center"></div><span class="dial-zero">0°</span><span class="dial-top">90°</span></div><div class="angle-value" id="current">${value}°</div>${action('Lock angle')}<div class="game-subtext">Click or drag the dial. Angles increase counterclockwise.</div>`);let dial=$('#dial',s.stage);const update=(e)=>{const r=dial.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;value=(Math.atan2(cy-e.clientY,e.clientX-cx)*180/Math.PI+360)%360;$('#arm',s.stage).style.transform=`rotate(${-value}deg)`;$('#current',s.stage).textContent=`${round(value)}°`};let dragging=false;dial.onpointerdown=e=>{dragging=true;dial.setPointerCapture(e.pointerId);update(e)};dial.onpointermove=e=>{if(dragging)update(e)};dial.onpointerup=e=>{dragging=false};$('#arm',s.stage).style.transform=`rotate(-${value}deg)`;$('#commit',s.stage).onclick=()=>{const error=Math.abs((value-target+540)%360-180),score=precision(error,23);sum+=score;h(s.stage,`<div class="center-note"><div class="mini-score">${score} <small>/ 100</small></div><h2>${target}° was the target.</h2><p>Your dial: ${round(value)}°. Error: ${round(error)}°.</p></div>`);roundNo++;if(roundNo===5)s.after(()=>s.done(sum/5,`${round(sum/5)} / 100`,'Five angles, with the shortest circular error used.'),850);else s.after(draw,850)}}draw();}
+function angle(s){
+ let roundNo=0,sum=0,target=0,value=0;
+ function draw(){
+  target=irnd(14,345);value=0;
+  h(s.stage,`${stageStats(roundNo+1,5,'Spatial intuition')}<div class="angle-instruction">Make an angle of <strong>${target}°</strong></div><div class="angle-dial" id="dial" role="group" aria-label="Angle dial. Drag the bright ray to estimate the target without seeing the exact measurement."><div class="angle-ring"></div><div class="angle-base"></div><div class="angle-arm" id="arm"></div><div class="angle-center"></div></div><div class="angle-value">Exact degrees hidden until you lock your guess.</div>${action('Lock angle')}<div class="game-subtext">Click or drag the dial. Start from the gray ray; rotate counterclockwise.</div>`);
+  const dial=$('#dial',s.stage),arm=$('#arm',s.stage);
+  const update=e=>{const r=dial.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;value=(Math.atan2(cy-e.clientY,e.clientX-cx)*180/Math.PI+360)%360;arm.style.transform=`rotate(${-value}deg)`};
+  let dragging=false;
+  dial.onpointerdown=e=>{dragging=true;dial.setPointerCapture(e.pointerId);update(e)};
+  dial.onpointermove=e=>{if(dragging)update(e)};
+  dial.onpointerup=()=>{dragging=false};
+  dial.onpointercancel=()=>{dragging=false};
+  $('#commit',s.stage).onclick=()=>{
+   const error=Math.abs((value-target+540)%360-180),score=precision(error,23);sum+=score;
+   h(s.stage,`<div class="center-note angle-reveal"><div class="mini-score">${score} <small>/ 100</small></div><h2>${round(error)}° off</h2><div class="angle-dial angle-review" aria-label="Your angle and correct angle"><div class="angle-ring"></div><div class="angle-base"></div><div class="angle-arm" style="transform:rotate(${-value}deg)"></div><div class="angle-arm angle-correct" style="transform:rotate(${-target}deg)"></div><div class="angle-center"></div></div><div class="angle-legend"><span><i class="angle-swatch mine"></i>Your guess: ${round(value)}°</span><span><i class="angle-swatch correct"></i>Target: ${target}°</span></div></div>`);
+   roundNo++;
+   if(roundNo===5)s.after(()=>s.done(sum/5,`${round(sum/5)} / 100`,'Five hidden-measurement angles, scored by shortest circular error.'),1400);
+   else s.after(draw,1400);
+  }
+ }
+ draw();
+}
 
 function split(s){let roundNo=0,sum=0,target=0,value=.5;
  function draw(){target=irnd(9,91)/100;value=.5;h(s.stage,`${stageStats(roundNo+1,5,'Proportion intuition')}<div class="split-instruction">Mark <strong>${round(target*100)}%</strong> of the line</div><div class="split-ruler" id="ruler"><div class="split-fill" id="fill" style="width:50%"></div><div class="split-handle" id="handle" style="left:50%"></div></div><div class="split-endpoints"><span>0%</span><span>100%</span></div><div class="split-estimate" id="estimate">Drag the marker to your answer</div>${action('Lock position')}<div class="game-subtext">The left endpoint is zero.</div>`);let ruler=$('#ruler',s.stage);const update=e=>{const r=ruler.getBoundingClientRect();value=clamp((e.clientX-r.left)/r.width,0,1);$('#fill',s.stage).style.width=(value*100)+'%';$('#handle',s.stage).style.left=(value*100)+'%'};let drag=false;ruler.onpointerdown=e=>{drag=true;ruler.setPointerCapture(e.pointerId);update(e)};ruler.onpointermove=e=>{if(drag)update(e)};ruler.onpointerup=()=>drag=false;$('#commit',s.stage).onclick=()=>{const error=Math.abs(target-value)*100,score=precision(error,9);sum+=score;h(s.stage,`<div class="center-note"><div class="mini-score">${score} <small>/ 100</small></div><h2>${round(target*100)}% was the mark.</h2><p>You placed ${value*100|0}%. Error: ${error.toFixed(1)} percentage points.</p></div>`);roundNo++;if(roundNo===5)s.after(()=>s.done(sum/5,`${round(sum/5)} / 100`,'Mean of five fraction estimates.'),900);else s.after(draw,900)}}draw();}
@@ -250,8 +285,10 @@ const initial=()=>({history:[],favorites:[],daily:{},created:Date.now()});
 let store;try{store={...initial(),...JSON.parse(localStorage.getItem(STORE_KEY)||'{}')}}catch{store=initial()}
 let page='home',filter='All',query='',selected=null,sessionStop=null,sessionActive=false,playMode='practice',result=null,showFavorites=false,trendGame=null;
 const save=()=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(store))}catch{}};
-const historyFor=id=>store.history.filter(x=>x.id===id&&x.version===SCORE_VERSION);
-const legacyCount=()=>store.history.filter(x=>x.version!==SCORE_VERSION).length;
+const versionFor=id=>id==='angle'?3:SCORE_VERSION; // Angle's original live degree readout invalidated its earlier records.
+const currentAttempt=x=>x.version===versionFor(x.id);
+const historyFor=id=>store.history.filter(x=>x.id===id&&currentAttempt(x));
+const legacyCount=()=>store.history.filter(x=>!currentAttempt(x)).length;
 const bestFor=id=>historyFor(id).reduce((a,b)=>Math.max(a,b.score),0);
 const dateLabel=()=>new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 const recorded=()=>Object.keys(store.daily).sort().filter(d=>store.daily[d]?.length>=5);
@@ -265,7 +302,7 @@ const formatDay=x=>new Date(x).toLocaleDateString('en-US',{month:'short',day:'nu
 const trainingPicks=()=>{
  const played=GAMES.filter(g=>historyFor(g.id).length);
  if(!played.length)return [{game:byId('reaction'),why:'A fast warm-up'},{game:byId('dots'),why:'Trust your instincts'},{game:byId('pattern'),why:'A little puzzle'}];
- const attempts=store.history.filter(x=>x.version===SCORE_VERSION);
+ const attempts=store.history.filter(currentAttempt);
  const recentlyPlayed=new Set(attempts.slice(-5).map(x=>x.id));
  const underplayed=GAMES.filter(g=>!historyFor(g.id).length);
  const needsPractice=played.filter(g=>historyFor(g.id).length>=2).map(g=>{
@@ -297,7 +334,7 @@ function library(){const shown=GAMES.filter(g=>(filter==='All'||g.cat===filter)&
  return `<div class="library-page">${pageHeading('THE COLLECTION / 19 LITTLE CHALLENGES','Pick a feeling. Play a game.','From reflexes to visual puzzles, every game takes less than a minute or two to learn.')}<div class="library-controls"><div class="searchbox"><span>⌕</span><input id="game-search" value="${escapeHTML(query)}" placeholder="Search games or skills..." autocomplete="off" aria-label="Search games"></div><button class="filter-favorite ${showFavorites?'active':''}" data-action="favorites-only">${showFavorites?'♥':'♡'} Favorites</button></div><div class="category-chips">${CATEGORIES.map(c=>`<button data-action="category" data-category="${c}" class="chip ${filter===c?'selected':''}">${c==='All'?'✳ ':''}${c} ${c==='All'?`<span>${GAMES.length}</span>`:''}</button>`).join('')}</div><div class="result-heading"><span><strong id="result-count">${shown.length}</strong> GAMES TO DISCOVER</span><span>CLICK A CARD TO PLAY ↗</span></div><div class="game-grid" id="games-grid">${shown.map(card).join('')||'<div class="empty-state">No games match that search. Try another category.</div>'}</div></div>`}
 function plot(data){if(!data.length)return `<div class="empty-chart">PLAY A FEW GAMES TO SEE YOUR SCORE TREND HERE ↗</div>`;const values=data.slice(-30).map(x=>x.score),W=720,H=190,m=16;const xy=values.map((v,i)=>[m+(i/(Math.max(values.length-1,1)))*(W-2*m),H-14-v/100*(H-28)]);let path=xy.map((p,i)=>`${i?'L':'M'} ${p.join(' ')}`).join(' ');return `<svg class="trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Recent game scores trend"><path d="M${m} ${H-14}H${W-m}" stroke="#363c45" fill="none" stroke-dasharray="4 6"/><path d="M${m} ${H/2}H${W-m}" stroke="#33383e" fill="none" stroke-dasharray="4 6"/><path d="${path}" stroke="#d9f96c" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>${xy.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#d9f96c" stroke="#191c21" stroke-width="2"/>`).join('')}</svg><div class="chart-legend"><span>LAST ${values.length} ATTEMPTS</span><span>GAME SCORE / 100</span></div>`}
 function stats(){const played=GAMES.filter(x=>historyFor(x.id).length).sort((a,b)=>historyFor(b.id).length-historyFor(a.id).length);const count=store.history.length;
- const current=store.history.filter(x=>x.version===SCORE_VERSION);const active=played[0]?.id;
+ const current=store.history.filter(currentAttempt);const active=played[0]?.id;
  if(!trendGame||!historyFor(trendGame).length)trendGame=active||null;
  const trend=trendGame?runTrend(trendGame):[];const tg=trendGame?byId(trendGame):null;
  const coverage=CATEGORIES.slice(1).map(cat=>({cat,plays:current.filter(x=>byId(x.id)?.cat===cat).length})),max=Math.max(1,...coverage.map(x=>x.plays));
@@ -313,7 +350,7 @@ function resultScreen(g){const score=result.score,previousBest=result.previousBe
 function render(){if(sessionStop){sessionStop();sessionStop=null}sessionActive=false;window.scrollTo?.(0,0);let content;if(page==='home')content=home();else if(page==='library')content=library();else if(page==='stats')content=stats();else if(page==='game'){const g=byId(selected);content=result?resultScreen(g):gameIntro(g)}else content=home();app.innerHTML=shell(content)}
 function setPage(p){page=p;result=null;render()}
 function open(id,mode='practice'){if(!byId(id))return;selected=id;playMode=mode;page='game';result=null;render()}
-function startGame(){if(!selected)return;const g=byId(selected);if(sessionStop)sessionStop();sessionActive=true;app.querySelector('#main').innerHTML=playScreen(g);const stage=app.querySelector('#game-stage');sessionStop=mountGame(selected,stage,(score,raw,detail)=>{const previousBest=bestFor(selected),previousScore=historyFor(selected).at(-1)?.score??null;sessionActive=false;const attempt={id:selected,score,raw,detail,at:Date.now(),daily:playMode==='daily',version:SCORE_VERSION};store.history.push(attempt);if(store.history.length>2000)store.history.splice(0,store.history.length-2000);if(playMode==='daily'){const d=today();store.daily[d]??=[];if(!store.daily[d].some(x=>x.id===selected))store.daily[d].push({id:selected,score,at:attempt.at})}save();result={score,raw,detail,previousBest,previousScore};sessionStop=null;render()});}
+function startGame(){if(!selected)return;const g=byId(selected);if(sessionStop)sessionStop();sessionActive=true;app.querySelector('#main').innerHTML=playScreen(g);const stage=app.querySelector('#game-stage');sessionStop=mountGame(selected,stage,(score,raw,detail)=>{const previousBest=bestFor(selected),previousScore=historyFor(selected).at(-1)?.score??null;sessionActive=false;const attempt={id:selected,score,raw,detail,at:Date.now(),daily:playMode==='daily',version:versionFor(selected)};store.history.push(attempt);if(store.history.length>2000)store.history.splice(0,store.history.length-2000);if(playMode==='daily'){const d=today();store.daily[d]??=[];if(!store.daily[d].some(x=>x.id===selected))store.daily[d].push({id:selected,score,at:attempt.at})}save();result={score,raw,detail,previousBest,previousScore};sessionStop=null;render()});}
 function exportData(){const data=new Blob([JSON.stringify({app:'TILT',version:1,exportedAt:new Date().toISOString(),...store},null,2)],{type:'application/json'});const url=URL.createObjectURL(data);const a=document.createElement('a');a.href=url;a.download=`tilt-progress-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 app.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(!b)return;const {action,id,category}=b.dataset;
  if(action==='home'||action==='library'||action==='stats')setPage(action);
